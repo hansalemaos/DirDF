@@ -1,103 +1,121 @@
-<p align="center"><a href="https://twitter.com/Aprender_alemao"><img src="https://cdn.jsdelivr.net/gh/dmhendricks/signature-social-icons/icons/round-flat-filled/50px/twitter.png" alt="Twitter" title="Twitter" width="50"/></a><a href="https://www.facebook.com/estudaralemao/"><img src="https://cdn.jsdelivr.net/gh/dmhendricks/signature-social-icons/icons/round-flat-filled/50px/facebook.png" alt="Facebook" title="Facebook" width="50"/></a><a href="https://www.instagram.com/estudaralemao/"><img src="https://cdn.jsdelivr.net/gh/dmhendricks/signature-social-icons/icons/round-flat-filled/50px/instagram.png" alt="Instagram" title="Instagram" width="50"/></a><a href="https://www.youtube.com/c/wwwqueroestudaralemaocombr"><img src="https://cdn.jsdelivr.net/gh/dmhendricks/signature-social-icons/icons/round-flat-filled/50px/youtube.png" alt="YouTube" title="YouTube" width="50"/></a><a href="https://api.whatsapp.com/send?phone=5511989782756&text=I%20want%20to%20know%20..."><img src="https://cdn.jsdelivr.net/gh/dmhendricks/signature-social-icons/icons/round-flat-filled/50px/whatsapp.png" alt="WhatsApp" title="WhatsApp" width="50"/></a><a href="https://www.queroestudaralemao.com.br"><img src="https://cdn.jsdelivr.net/gh/dmhendricks/signature-social-icons/icons/round-flat-filled/50px/website.png" alt="WWW" title="WWW" width="50"/></a><a href="https://br.pinterest.com/chucrutehans/"><img src="https://cdn.jsdelivr.net/gh/dmhendricks/signature-social-icons/icons/round-flat-filled/50px/pinterest.png" alt="Pinterest" title="Pinterest" width="50"/></a><a href="mailto:aulasparticularesdealemaosp@gmail.com?subject=I%20want%20to%20know%20...%20"><img src="https://cdn.jsdelivr.net/gh/dmhendricks/signature-social-icons/icons/round-flat-filled/50px/mail.png" alt="E-Mail" title="E-Mail" width="50"/>
-</a>
+### Never mind explorer.exe, here is dirdf
 
+Are you one of those people who have never any space on their hard disk? Do you spend hours and hours searching for your files because you never remember where you saved them? Well, since I am one of those, I tried several tools in the past: TreeSize / WinDirStat / WizTree / SpaceSniffer / GREP. They all are great,
 
-<p align="center">
-<a href=https://github.com/hansalemaos><img src="https://img.shields.io/badge/author-hansalemaos-black"/></a>
-<a href=https://www.queroestudaralemao.com.br><img src="https://img.shields.io/badge/from-queroestudaralemao.com.br-darkgreen"/></a>
-<a href=#><img src="https://img.shields.io/badge/for-Windows-black"/></a>
-<a href=https://codeload.github.com/liangjingkanji/DrakeTyporaTheme/zip/refs/heads/master><img src="https://img.shields.io/badge/Theme-Drake-black"/></a>
-<a href=https://github.com/dmhendricks/signature-social-icons><img src="https://img.shields.io/badge/Social-Icons-darkgreen"/></a>
-</p><br><!--  -->
+but take forever to get the job done and only offer limited filter functions. Around 5 hours ago, after having searched around 30 minutes for a file on my hard drive, I decided to do something about it ... 
 
-# DirDF
-
-Are you one of those people who have never any space on their hard disk? Do you spend hours and hours searching for your files because you never remember where you saved them? Well, since I am one of those, I tried several tools in the past: [TreeSize](https://www.jam-software.com/treesize_free) / [WinDirStat](https://windirstat.net/) / [WizTree](https://diskanalyzer.com/) / [SpaceSniffer](http://www.uderzo.it/main_products/space_sniffer/) / GREP. They all are great,
-
-but take forever to get the job done and only offer limited filter functions. Around 5 hours ago, after having searched around 30 minutes for a file on my hard drive, I decided to do something about it. Since [pandas](https://github.com/pandas-dev/pandas) is the greatest invention of mankind (eighth wonder of the world?), I thought: why not using the power of pandas to solve this problem once and for all?
-
-Now, about 5 hours later, the first version of “DirDF” is ready, and I am really happy with the results (I found the file I was looking for in a couple of seconds hahaha)
-
-## how to use it
-### Creating an instance
+#### Install the package (Windows only)
+```python
+pip install dirdf
 ```
-search_folder = DirDF(
 
-    path_to_search=r"F:\\zzzzzzzzzzzzzzzzzzzzzzzzzz1", save_df_to=r"F:\\saveto"
+#### Install Cygwin (ls.exe is necessary for getting the file list)
 
+[ls.exe](https://www.cygwin.com/setup-x86_64.exe).
+
+#### Tools needed for some functions
+
+[strings.exe](https://download.sysinternals.com/files/Strings.zip).
+[rg.exe](https://github.com/BurntSushi/ripgrep/releases/download/13.0.0/ripgrep-13.0.0-x86_64-pc-windows-gnu.zip).
+[fzf.exe](https://github.com/junegunn/fzf/releases/download/0.35.1/fzf-0.35.1-windows_amd64.zip).
+
+##### It is recommended to add strings.exe/rg.exe/fzf.exe/ls.exe files to your path
+
+```python
+from dirdf import pd_add_dfdir
+pd_add_dfdir()
+import pandas as pd
+
+df = pd.Q_folder_to_df(
+    folder=r"C:\Users\blabla",
+    ls_path="ls",
+    last_access_time=True,
+    exit_keys="ctrl+x",
+    timeout=None,
 )
-```
-**path_to_search** = you can pass a string or a list (more than one path)  
-**save_df_to** = the search results will be saved in this folder so that you can use them later on
-
-### Preparing flat copy
-```
-search_folder.create_flatcopy_link(separator="Ç", saveto=r"F:\\symlinks")
-```
-
-This function will create a column in the DataFrame with the filenames for “flat copy” (all files in one folder).  It will not copy anything yet!  
-**separator="Ç"** means that the backslash ‘\\’ will be replaced by “Ç”. The replacement is important because there is not “flat copy” with a backslash in the path!
-
-### Performing a flat copy (symlink)
-```
-search_folder.create_simlink_in_folder(filtered_df=search_folder.df, printresult=True)
-```
-
-Here we perform the “flat copy” that we prepared in the last command. Important: the files are not copied, only a symlink is created (to save space hahaha).
-
-<img src="symlink.png" width="800"/>
-<img src="symlink1.png" width="800"/>
-
-
-### Performing a flat copy (real copy)
-```
-search_folder.create_flatcopy_link(seperator="#", saveto=r"F:\\symlinks")
-search_folder.flatcopyfiles(filtered_df=search_folder.df, printresult=True)
-```
-Here we perform the “flat copy” but this time, the files are copied!
-
-<img src="flatcopy.png" width="800"/>
-
-
-### Regex search in file content
-```
-all_txt_files = search_folder.df.loc[search_folder.df.f_filepath.str.contains("\\.txt$")].copy() #**The filter functions of pandas are awesome! Let’s filter all txt files.**
-
-**
-
-searchresultsdf = search_folder.search_with_regex_in_files(
-
-    regular_expression=r"[^\\n]+Bilderraten\[^\\n]+",
-
-    df=all_txt_files,
-
-    ignorecase=False,
-
-    dotall=False,
-
-    printresult=True,
-
-    use_bs4=True
-
+df2 = pd.Q_folder_to_df_with_functions(
+    folder=r"C:\Users\blabla",
+    ls_path="ls",
+    last_access_time=True,
+    exit_keys="ctrl+x",
+    timeout=None,
+    strings_path="strings",
+    fzf_path="fzf",
+    rip_grep_path="rg.exe",
+    add_flatcopy_sorted=True,
+    add_flatcopy=True,
+    add_extract_strings=True,
+    add_fuzzy_extract=True,
+    add_ripgrep=True,
+    add_open_file=True,
+    add_move_file=True,
 )
 
+# Some examples
+
+# Flatcopy - foldersep='ǀ' means that the backslash ‘\’ will be replaced by 'ǀ'. The replacement is important because there is no “flat copy” with a backslash in the path! All file types (pdf, jpg ... ) will get their own folder. If you want to save space, create a symlink instead of copying the whole file 
+df.loc[df.aa_fullpath.str.contains(r'\.txt|\.docx|\.jpg')][:100].ff_flatcopy_sorted.apply(lambda x:x('f:\\testflatcopy_df', foldersep='ǀ', symlink=False, copystat=True))
+df.loc[df.aa_fullpath.str.contains(r'\.txt|\.docx|\.jpg')][:100].ff_flatcopy_sorted.apply(lambda x:x('f:\\testflatcopy_df\\symlink', foldersep='ǀ', symlink=True, copystat=True)) # copystat will be ignored in this case
+
+# Flatcopy without sorting file types
+df.loc[df.aa_fullpath.str.contains(r'\.txt')][2:100].ff_flatcopy.apply(lambda x:x('f:\\newfoldertest\\flatcopy'))
+df.loc[df.aa_fullpath.str.contains(r'\.txt')][2:100].ff_flatcopy.apply(lambda x:x('f:\\newfoldertest\\flatcopy\\sym',symlink=True))
+
+# Extract all strings from any file 
+df.loc[df.aa_fullpath.str.contains(r'\.txt')][:100].ff_extract_strings.apply(lambda x:x(exit_keys='ctrl+x', print_output=True, timeout=None))
+
+# Fuzzy search in any file
+df.loc[df.aa_fullpath.str.contains(r'\.txt')][:100].ff_fuzzy.apply(lambda x:x('windows'))
+
+# Regex search in any file
+df.loc[df.aa_fullpath.str.contains(r'\.txt')][:100].ff_ripgrep.apply(lambda x:x(regular_expression='name', other_parameters='-i', exit_keys='ctrl+x', print_output=True, timeout=.1))
+
+# Executes os.startfile()
+df.loc[df.aa_fullpath.str.contains(r'\.txt')][:100].iloc[0].ff_open()
+
+# Moves files, keeps the folder structur
+df.loc[df.aa_fullpath.str.contains(r'\.txt')][:1].ff_move_file.apply(lambda x:x('f:\\newfoldertest'))
+
+
+df
+Out[3]: 
+                               aa_date  ... aa_filetype
+0  2022-10-23 12:18:58.767317900-03:00  ...          .0
+1  2022-10-23 05:48:51.755017400-03:00  ...       .yaml
+2  2022-10-23 05:51:47.520702700-03:00  ...        .jpg
+3  2022-10-23 05:51:46.817189600-03:00  ...        .jpg
+4  2022-10-23 05:48:51.755017400-03:00  ...       .yaml
+5  2022-10-23 12:18:58.767317900-03:00  ...        .csv
+6  2022-10-23 05:51:49.630625800-03:00  ...        .jpg
+7  2022-10-23 05:51:52.116036400-03:00  ...        .jpg
+8  2022-10-23 05:51:52.678404900-03:00  ...        .jpg
+9  2022-10-23 13:31:03.003835900-03:00  ...         NaN
+10 2022-10-23 12:18:59.267762600-03:00  ...         .pt
+11 2022-10-23 06:00:01.068658100-03:00  ...         .pt
+12 2022-10-23 07:23:56.117463800-03:00  ...         .pt
+13 2022-10-23 08:53:33.799414100-03:00  ...         .pt
+14 2022-10-23 12:18:59.048534200-03:00  ...         .pt
+[15 rows x 14 columns]
+df2
+Out[4]: 
+                               aa_date  ...                                        ff_flatcopy
+0  2022-10-23 12:18:58.767317900-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+1  2022-10-23 05:48:51.755017400-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+2  2022-10-23 05:51:47.520702700-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+3  2022-10-23 05:51:46.817189600-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+4  2022-10-23 05:48:51.755017400-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+5  2022-10-23 12:18:58.767317900-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+6  2022-10-23 05:51:49.630625800-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+7  2022-10-23 05:51:52.116036400-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+8  2022-10-23 05:51:52.678404900-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+9  2022-10-23 13:31:03.003835900-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+10 2022-10-23 12:18:59.267762600-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+11 2022-10-23 06:00:01.068658100-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+12 2022-10-23 07:23:56.117463800-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+13 2022-10-23 08:53:33.799414100-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+14 2022-10-23 12:18:59.048534200-03:00  ...  dest_folder:str, foldersep:str='ǀ', symlink:bo...
+[15 rows x 21 columns]
+
+
 ```
 
-Here I perform a regex search in all TXT files. **If you don’t pass a filtered DataFrame, search_folder.df will be used. The results are returned as a DataFrame**
-
-<img src="regexsearch.png" width="800"/>
-
-### DataFrame beaaaautifuuuuul 
-```
-search_folder.printdf(start=1, how_many_lines=1000)
-```
-A print function to make the DataFrame look more beautiful.
-
-<img src="print.png" width="800"/>
-
-### Delete files
-```
-search_folder.delete_files(filtered_df=all_txt_files, printresult=True, ask_before=True)
-```
-This function will delete all files in the filtered DataFrame. **If you don’t pass a filtered DataFrame, search_folder.df will be used.** ***It will always ask before deleting a file, unless you pass “ask_before=False”***
-<img src="deletefiles.png" width="800"/>
