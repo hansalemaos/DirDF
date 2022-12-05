@@ -1,383 +1,603 @@
+# -*- coding: utf-8 -*-
+import subprocess
+from functools import reduce
+
+import regex
+from flexible_partial import FlexiblePartialOwnName
+from subprocess_print_and_capture import (
+    execute_subprocess_multiple_commands_with_timeout_bin,
+)
 import os
-import shutil
-from collections import defaultdict
-from copy import deepcopy
-from time import strftime, sleep
-import regex  # pip install regex
-import pandas as pd  # pip install pandas
-from bs4 import BeautifulSoup  # pip install bs4
-from random import randrange
-import gc
-import kthread  # pip install kthread
-from farbprinter.farbprinter import Farbprinter  # pip install farbprinter
-import numpy as np
+import pandas as pd
+from LatinFixer import wrong_chars
 
-forbiddenfilepath = ["\\", "/", ":", "?", "*", "<", '"', ">", "|"]
+from fastfilecopy import copyfile, movefile
+from touchtouch import touch
 
-drucker = Farbprinter()
+forbiddenfilepath = [":", "?", "*", "<", '"', ">", "|"]
+
+latindict = {
+    "¡": "\\302\\241",
+    "¢": "\\302\\242",
+    "£": "\\302\\243",
+    "¤": "\\302\\244",
+    "¥": "\\302\\245",
+    "¦": "\\302\\246",
+    "§": "\\302\\247",
+    "¨": "\\302\\250",
+    "©": "\\302\\251",
+    "ª": "\\302\\252",
+    "«": "\\302\\253",
+    "¬": "\\302\\254",
+    "®": "\\302\\256",
+    "¯": "\\302\\257",
+    "°": "\\302\\260",
+    "±": "\\302\\261",
+    "²": "\\302\\262",
+    "³": "\\302\\263",
+    "´": "\\302\\264",
+    "µ": "\\302\\265",
+    "¶": "\\302\\266",
+    "·": "\\302\\267",
+    "¸": "\\302\\270",
+    "¹": "\\302\\271",
+    "º": "\\302\\272",
+    "»": "\\302\\273",
+    "¼": "\\302\\274",
+    "½": "\\302\\275",
+    "¾": "\\302\\276",
+    "¿": "\\302\\277",
+    "À": "\\303\\200",
+    "Á": "\\303\\201",
+    "Â": "\\303\\202",
+    "Ã": "\\303\\203",
+    "Ä": "\\303\\204",
+    "Å": "\\303\\205",
+    "Æ": "\\303\\206",
+    "Ç": "\\303\\207",
+    "È": "\\303\\210",
+    "É": "\\303\\211",
+    "Ê": "\\303\\212",
+    "Ë": "\\303\\213",
+    "Ì": "\\303\\214",
+    "Í": "\\303\\215",
+    "Î": "\\303\\216",
+    "Ï": "\\303\\217",
+    "Ð": "\\303\\220",
+    "Ñ": "\\303\\221",
+    "Ò": "\\303\\222",
+    "Ó": "\\303\\223",
+    "Ô": "\\303\\224",
+    "Õ": "\\303\\225",
+    "Ö": "\\303\\226",
+    "×": "\\303\\227",
+    "Ø": "\\303\\230",
+    "Ù": "\\303\\231",
+    "Ú": "\\303\\232",
+    "Û": "\\303\\233",
+    "Ü": "\\303\\234",
+    "Ý": "\\303\\235",
+    "Þ": "\\303\\236",
+    "ß": "\\303\\237",
+    "à": "\\303\\240",
+    "á": "\\303\\241",
+    "â": "\\303\\242",
+    "ã": "\\303\\243",
+    "ä": "\\303\\244",
+    "å": "\\303\\245",
+    "æ": "\\303\\246",
+    "ç": "\\303\\247",
+    "è": "\\303\\250",
+    "é": "\\303\\251",
+    "ê": "\\303\\252",
+    "ë": "\\303\\253",
+    "ì": "\\303\\254",
+    "í": "\\303\\255",
+    "î": "\\303\\256",
+    "ï": "\\303\\257",
+    "ð": "\\303\\260",
+    "ñ": "\\303\\261",
+    "ò": "\\303\\262",
+    "ó": "\\303\\263",
+    "ô": "\\303\\264",
+    "õ": "\\303\\265",
+    "ö": "\\303\\266",
+    "÷": "\\303\\267",
+    "ø": "\\303\\270",
+    "ù": "\\303\\271",
+    "ú": "\\303\\272",
+    "û": "\\303\\273",
+    "ü": "\\303\\274",
+    "ý": "\\303\\275",
+    "þ": "\\303\\276",
+    "ÿ": "\\303\\277",
+}
+latintuple2 = (
+    ("Â¡", "¡"),
+    ("Â¢", "¢"),
+    ("Â£", "£"),
+    ("Â¤", "¤"),
+    ("Â¥", "¥"),
+    ("Â¦", "¦"),
+    ("Â§", "§"),
+    ("Â¨", "¨"),
+    ("Â©", "©"),
+    ("Âª", "ª"),
+    ("Â«", "«"),
+    ("Â¬", "¬"),
+    ("Â®", "®"),
+    ("Â¯", "¯"),
+    ("Â°", "°"),
+    ("Â±", "±"),
+    ("Â²", "²"),
+    ("Â³", "³"),
+    ("Â´", "´"),
+    ("Âµ", "µ"),
+    ("Â¶", "¶"),
+    ("Â·", "·"),
+    ("Â¸", "¸"),
+    ("Â¹", "¹"),
+    ("Âº", "º"),
+    ("Â»", "»"),
+    ("Â¼", "¼"),
+    ("Â½", "½"),
+    ("Â¾", "¾"),
+    ("Â¿", "¿"),
+    ("Ã", "À"),
+    ("Ã", "Á"),
+    ("Ã", "Â"),
+    ("Ã", "Ã"),
+    ("Ã", "Ä"),
+    ("Ã", "Å"),
+    ("Ã", "Æ"),
+    ("Ã", "Ç"),
+    ("Ã", "È"),
+    ("Ã", "É"),
+    ("Ã", "Ê"),
+    ("Ã", "Ë"),
+    ("Ã", "Ì"),
+    ("Ã", "Í"),
+    ("Ã", "Î"),
+    ("Ã", "Ï"),
+    ("Ã", "Ð"),
+    ("Ã", "Ñ"),
+    ("Ã", "Ò"),
+    ("Ã", "Ó"),
+    ("Ã", "Ô"),
+    ("Ã", "Õ"),
+    ("Ã", "Ö"),
+    ("Ã", "×"),
+    ("Ã", "Ø"),
+    ("Ã", "Ù"),
+    ("Ã", "Ú"),
+    ("Ã", "Û"),
+    ("Ã", "Ü"),
+    ("Ã", "Ý"),
+    ("Ã", "Þ"),
+    ("Ã", "ß"),
+    ("Ã ", "à"),
+    ("Ã¡", "á"),
+    ("Ã¢", "â"),
+    ("Ã£", "ã"),
+    ("Ã¤", "ä"),
+    ("Ã¥", "å"),
+    ("Ã¦", "æ"),
+    ("Ã§", "ç"),
+    ("Ã¨", "è"),
+    ("Ã©", "é"),
+    ("Ãª", "ê"),
+    ("Ã«", "ë"),
+    ("Ã¬", "ì"),
+    ("Ã­", "í"),
+    ("Ã®", "î"),
+    ("Ã¯", "ï"),
+    ("Ã°", "ð"),
+    ("Ã±", "ñ"),
+    ("Ã²", "ò"),
+    ("Ã³", "ó"),
+    ("Ã´", "ô"),
+    ("Ãµ", "õ"),
+    ("Ã¶", "ö"),
+    ("Ã·", "÷"),
+    ("Ã¸", "ø"),
+    ("Ã¹", "ù"),
+    ("Ãº", "ú"),
+    ("Ã»", "û"),
+    ("Ã¼", "ü"),
+    ("Ã½", "ý"),
+    ("Ã¾", "þ"),
+    ("Ã¿", "ÿ"),
+    ("Ã\\237", "ß"),
+    ("Ã\\207", "Ç"),
+    ("Ã", "Ç"),
+)
+latindictopp = {v: k for k, v in latindict.items()}
+latindictoppyuple = tuple(latindictopp.items())
+wrong_chars_sorted = tuple(reversed(sorted(wrong_chars, key=lambda x: x[0])))
 
 
-class DirDF:
-    def __init__(self, path_to_search, save_df_to):
-        if isinstance(path_to_search, str):
-            path_to_search = [path_to_search]
-        path_to_search = [x.rstrip("\\") for x in path_to_search]
-        path_to_search = [x + "\\" for x in path_to_search]
-        self.ergebnisdict = self.nesteddicterstellen()
-        self.save_df_to = save_df_to
-        self.path_to_search = path_to_search
-        allethreads = [
-            kthread.KThread(
-                target=self.getfilelist_mit_dir_ms_dos, args=[xxx], name=xxx[0]
+def _create_symlink(src: str, dest: str) -> bool:
+    if not os.path.exists(dest):
+        touch(dest)
+        os.remove(dest)
+    try:
+        os.symlink(src, dest, False)
+    except Exception:
+        return False
+    return True
+
+
+def get_dataframe_from_folder(
+    folder, ls_path="ls", last_access_time=True, exit_keys="ctrl+x", timeout=None,
+):
+    command = f'"{ls_path}" -1 -R -i -H --hyperlink -las -s -f --full-time --context'
+    if last_access_time:
+        command = (
+            f'"{ls_path}" -1 -R -i -H --hyperlink -las -s -f --full-time --context -c'
+        )
+
+    folder = os.path.normpath(folder)
+    workdict = os.getcwd()
+    os.chdir(folder)
+    print_output = False
+    mydata = execute_subprocess_multiple_commands_with_timeout_bin(
+        cmd=command,
+        subcommands=[],
+        exit_keys=exit_keys,
+        end_of_printline="",
+        print_output=print_output,
+        timeout=timeout,
+    )
+    os.chdir(workdict)
+    df = pd.DataFrame(mydata)
+    df[0] = df[0].apply(lambda x: x.decode("latin", "ignore"))
+    df = df.loc[~df[0].str.contains(r"[.]{1,2}\s*$", regex=True, na=False)]
+    df[0] = df[0].apply(
+        lambda x: reduce(
+            lambda a, b: a.replace(b[0], b[1]), latindictoppyuple, x
+        ).strip()
+    )
+    df[0] = df[0].apply(
+        lambda x: reduce(lambda a, b: a.replace(b[0], b[1]), latintuple2, x).strip()
+    )
+    df[0] = df[0].str.lstrip()
+    df["aa_folder"] = df[0].str.extract(r"^([\'.:]{0,5}/.*)")
+    df["aa_folder"] = df.aa_folder.str.rstrip("/:").str.lstrip("./")
+    df.aa_folder = df.aa_folder.ffill()
+
+    df = df.fillna("")
+    df = df.loc[df[0].str.contains(r"^\d+\s+")]
+    dfcomplete = df[0].str.split(n=10, expand=True).copy()
+    symlink = dfcomplete[10].str.split(" -> ", regex=False, expand=True)
+    if symlink.shape[1] == 1:
+        symlink[1] = pd.NA
+    df = pd.concat(
+        [dfcomplete, df.aa_folder.copy(), symlink], axis=1, ignore_index=True
+    )
+    df["aa_date"] = pd.to_datetime(df[7] + " " + df[8] + " " + df[9])
+    df = df.drop(columns=[7, 8, 9])
+    df.columns = [
+        "aa_id",
+        "aa_rights",
+        "aa_links",
+        "aa_owner",
+        "aa_group",
+        "aa_security",
+        "aa_size",
+        "aa_complete_data",
+        "aa_relative_folder",
+        "aa_filename",
+        "aa_symlink",
+        "aa_date",
+    ]
+
+    df["aa_folder"] = df.aa_relative_folder.apply(
+        lambda x: os.path.normpath(os.path.join(folder, x))
+    )
+    df.aa_relative_folder = df.aa_relative_folder.apply(lambda x: os.path.normpath(x))
+    df.aa_symlink = df.aa_symlink.apply(
+        lambda x: os.path.normpath(regex.sub(r"^/(\w)/", r"\g<1>:\\", x.strip()))
+        if isinstance(x, str)
+        else pd.NA
+    )
+    df.aa_relative_folder = df.aa_relative_folder.str.replace(r"^\.$", "", regex=True)
+    df["aa_fullpath"] = df.aa_folder + "\\" + df.aa_filename
+    df = df.drop(columns="aa_complete_data").reset_index(drop=True)
+    df = df.filter(list(sorted(df.columns)))
+    df.aa_relative_folder = df.aa_relative_folder.str.replace("/", "\\")
+
+    try:
+        df["aa_filename"] = df["aa_filename"].astype("string")
+    except Exception:
+        pass
+    try:
+        df["aa_folder"] = df["aa_folder"].astype("category")
+    except Exception:
+        pass
+    try:
+        df["aa_fullpath"] = df["aa_fullpath"].astype("string")
+    except Exception:
+        pass
+    try:
+        df["aa_symlink"] = df["aa_symlink"].astype("string")
+    except Exception:
+        pass
+    try:
+        df["aa_size"] = df["aa_size"].astype("Int64")
+    except Exception:
+        pass
+    try:
+        df["aa_index"] = df["aa_index"].astype("Int64")
+    except Exception:
+        pass
+    try:
+        df["aa_rights"] = df["aa_rights"].astype("category")
+    except Exception:
+        pass
+    try:
+        df["aa_links"] = df["aa_links"].astype("Int64")
+    except Exception:
+        pass
+    try:
+        df["aa_owner"] = df["aa_owner"].astype("category")
+    except Exception:
+        pass
+    try:
+        df["aa_group"] = df["aa_group"].astype("category")
+    except Exception:
+        pass
+    try:
+        df["aa_security"] = df["aa_security"].astype("category")
+    except Exception:
+        pass
+    try:
+        df["aa_relative_folder"] = df["aa_relative_folder"].astype("category")
+    except Exception:
+        pass
+    try:
+        df["aa_id"] = df["aa_id"].astype("Int64")
+    except Exception:
+        pass
+
+    dftype = df.loc[(df.aa_size > 0) & (~df.aa_rights.str.startswith("l"))].index
+    df["aa_filetype"] = pd.NA
+    df.loc[dftype, "aa_filetype"] = df.loc[dftype].aa_filename.str.extract(
+        r"(\.[^\./\\]+$)"
+    )[0]
+    try:
+        df["aa_filetype"] = df["aa_filetype"].astype("category")
+    except Exception:
+        pass
+    return df
+
+
+def flatcopy_sorted(
+    src, file_ending, dest_folder, foldersep="ǀ", symlink=False, copystat=True
+):
+    if not isinstance(file_ending, str):
+        file_ending = "other"
+    dest_folder = os.path.join(dest_folder, file_ending.strip("."))
+    if not os.path.exists(dest_folder):
+        os.makedirs(dest_folder)
+    dest = replace_non_valid_chars_file_path(src, replacement="_")
+    desta = os.path.join(dest_folder, dest.replace(os.sep, foldersep))
+    if symlink:
+        _create_symlink(src=src, dest=desta)
+    else:
+        if not copystat:
+            copyfile(src, desta, copystat=False)
+        else:
+            copyfile(src, desta, copystat=True)
+
+    return desta
+
+
+def replace_non_valid_chars_file_path(string_, replacement="_"):
+    return reduce(lambda a, b: a.replace(b, replacement), forbiddenfilepath, string_)
+
+
+def flatcopy(src, dest_folder, foldersep="ǀ", symlink=False, copystat=True):
+    if not os.path.exists(dest_folder):
+        os.makedirs(dest_folder)
+    dest = replace_non_valid_chars_file_path(src, replacement="_")
+    desta = os.path.join(dest_folder, dest.replace(os.sep, foldersep))
+    if symlink:
+        _create_symlink(src=src, dest=desta)
+    else:
+        if not copystat:
+            copyfile(src, desta, copystat=False)
+        else:
+            copyfile(src, desta, copystat=True)
+
+    return desta
+
+
+def move_file(src, dest_folder, copystat=True):
+    fpa = regex.sub(r"^[^:]+:\\", "", src)
+    print(fpa)
+    dest_folder_file = os.path.join(dest_folder, fpa)
+    print(dest_folder_file)
+    if not os.path.exists(dest_folder):
+        os.makedirs(dest_folder)
+    if not os.path.exists(dest_folder_file):
+        touch(dest_folder_file)
+        os.remove(dest_folder_file)
+    print(src, dest_folder_file)
+    return movefile(src, dest_folder_file, copystat=copystat)
+
+
+def rip_grep_search(
+    rip_grep_path,
+    path,
+    regular_expression,
+    other_parameters="",
+    exit_keys: str = "ctrl+x",
+    print_output=True,
+    timeout=None,
+):
+
+    return b"".join(
+        execute_subprocess_multiple_commands_with_timeout_bin(
+            rf'{rip_grep_path} {other_parameters} --search-zip --line-number --case-sensitive --binary "{regular_expression}" "{path}"',
+            subcommands=[],
+            exit_keys=exit_keys,
+            print_output=print_output,
+            timeout=timeout,
+        )
+    )
+
+
+def get_string(
+    strings_path, filepath, exit_keys: str = "ctrl+x", print_output=True, timeout=None,
+):
+    xx = b"".join(
+        execute_subprocess_multiple_commands_with_timeout_bin(
+            rf'{strings_path} "{filepath}"',
+            subcommands=[],
+            exit_keys=exit_keys,
+            print_output=print_output,
+            timeout=timeout,
+        )
+    )
+    return xx.split(b"www.sysinternals.com\r\n\r\n")[-1]
+
+
+def get_fzf(
+    fzf_path, strings_path, filepath, searchstring,
+):
+    stringp = get_string(strings_path, filepath=filepath, print_output=False).strip()
+
+    processNames = subprocess.run(
+        [
+            fzf_path,
+            "-f",
+            searchstring,
+            "--sync",
+            "--layout=reverse",
+            "--no-multi",
+            "--inline-info",
+            "--no-sort",
+        ],
+        input=stringp,
+        capture_output=True,
+    )
+    return processNames.stdout
+
+
+def add_functions(
+    df,
+    strings_path="strings",
+    fzf_path="fzf",
+    rip_grep_path="rg.exe",
+    add_flatcopy_sorted=True,
+    add_flatcopy=True,
+    add_extract_strings=True,
+    add_fuzzy_extract=True,
+    add_ripgrep=True,
+    add_open_file=True,
+    add_move_file=True,
+):
+    if add_flatcopy_sorted:
+        df["ff_flatcopy_sorted"] = df.apply(
+            lambda x: FlexiblePartialOwnName(
+                flatcopy_sorted,
+                f"dest_folder:str, foldersep:str='ǀ', symlink:bool=False, copystat:bool=True",
+                True,
+                x.aa_fullpath,
+                x.aa_filetype,
+            ),
+            axis=1,
+        )
+    if add_extract_strings:
+        df["ff_extract_strings"] = df.aa_fullpath.apply(
+            lambda x: FlexiblePartialOwnName(
+                get_string,
+                f"exit_keys:str='ctrl+x', print_output:bool=True, timeout:Union[None,int]=None",
+                True,
+                strings_path,
+                x,
             )
-            for xxx in path_to_search
-        ]
-        allethreads2 = [k.start() for k in allethreads]
-        while len(path_to_search) > len(list(self.ergebnisdict.keys())):
-            sleep(0.5)
-        gc.collect()
-        alledatenframeszusammen = []
-        for key, item in self.ergebnisdict.items():
-            datenframeneu = pd.read_pickle(item)
-            alledatenframeszusammen.append(datenframeneu)
-        df = pd.concat(alledatenframeszusammen)
-        df.reset_index(inplace=True, drop=True)
-        gc.collect()
-        df.index = df.index.astype("int32")
-        df.f_folder = df.f_folder.astype("category")
-        df.f_filename = df.f_filename.astype("string")
-        df.f_filepath = df.f_filepath.astype("string")
-        df.f_owner = df.f_owner.astype("category")
-        df["f_date"] = df.f_date + " " + df.f_time
-        df["f_date"] = df["f_date"].astype("datetime64")
-        df.drop(columns=["f_time"], inplace=True)
-        df.f_size = df.f_size.str.replace(r"\.", "", regex=True)
-        df = df.loc[df.f_size.str.contains("^\d+$")].copy()
-        df.f_size = df.f_size.astype("int64")
-        self.endergebnisfilename = (
-            save_df_to + "\\" + strftime("%Y_%m_%d_%H_%M_%S") + ".pkl"
         )
-        df.reset_index(inplace=True, drop=True)
-        df.to_pickle(self.endergebnisfilename)
-        self.df = df.copy()
-        gc.collect()
-
-    def printdf(self, start=1, how_many_lines=1000):
-        drucker.p_pandas_list_dict(
-            self.df[start : start + how_many_lines], linebreak=1000
-        )
-
-    def flatcopyfiles(self, filtered_df=None, printresult=True):
-        if filtered_df is None:
-            filtered_df = self.df
-
-        def _copy_file(src, dest):
-            try:
-                if os.path.isfile(src):
-                    dpath, dfile = os.path.split(dest)
-                    if not os.path.isdir(dpath):
-                        os.makedirs(dpath)
-                    try:
-                        shutil.copy2(src, dest)
-                        return True
-                    except Exception as Fehler:
-                        print(Fehler)
-                        return False
-            except:
-                return False
-            return False
-
-        for link, symlink in zip(
-            filtered_df.f_filepath.to_list(), filtered_df.flatcopy.to_list()
-        ):
-            funktioniert = _copy_file(src=link, dest=symlink)
-            if printresult is True:
-                if funktioniert is True:
-                    print(drucker.f.black.brightgreen.italic(f"{link} -> {symlink} OK"))
-                elif funktioniert is False:
-                    print(
-                        drucker.f.black.brightred.italic(f"{link} -> {symlink} ERROR")
-                    )
-
-    def flattenlist_neu(self, iterable):
-        def iter_flatten(iterable):
-            it = iter(iterable)
-            for e in it:
-                if isinstance(e, (list)):
-                    for f in iter_flatten(e):
-                        yield f
-                else:
-                    yield e
-
-        a = [i for i in iter_flatten(iterable)]
-        return a
-
-    def readfile(self, pfad, minlength=4, deleteemptylines=True, use_bs4=True):
-        try:
-            with open(pfad, mode="rb") as f:
-                dateiohnehtml = f.read()
-            if use_bs4 is False:
-                return dateiohnehtml
-            dateiohnehtml = (
-                b"""<!DOCTYPE html><html><body><p>"""
-                + dateiohnehtml
-                + b"""</p></body></html>"""
+    if add_extract_strings or add_fuzzy_extract:
+        df["ff_fuzzy"] = df.aa_fullpath.apply(
+            lambda x: FlexiblePartialOwnName(
+                get_fzf, f"searchstring:str", True, fzf_path, strings_path, x,
             )
-            soup = BeautifulSoup(dateiohnehtml, "lxml")
-            soup = soup.text
-            soup = soup.strip()
-            if deleteemptylines is True:
-                versteckt = [x for x in soup.splitlines() if len(x) > minlength]
-                return versteckt
-            if deleteemptylines is False:
-                return soup
-        except Exception as Fehler:
-            print(Fehler)
-
-    def nesteddicterstellen(self):
-        nested_dict = lambda: defaultdict(nested_dict)
-        nest = nested_dict()
-        return deepcopy(nest)
-
-    def getfilelist_mit_dir_ms_dos(self, pfad):
-        aktuellezeit = strftime("%Y_%m_%d_%H_%M_%S")
-        aktuellezeit = aktuellezeit + str(randrange(0, 1000000000000000000)).zfill(25)
-        os.system(
-            rf"dir {pfad} /A/OD/R/S/TC/c/4 > {self.save_df_to}\verstecktedateiensuchemitdirmsdos{aktuellezeit}.txt"
         )
-        alledateien = self.readfile(
-            rf"{self.save_df_to}\verstecktedateiensuchemitdirmsdos{aktuellezeit}.txt"
-        )
-        speicherpfad = rf"{self.save_df_to}\ergebnis{aktuellezeit}.pkl"
-        aktuellesfolder = ""
-        msdosfileliste = self.nesteddicterstellen()
-        msdosfileliste[aktuellesfolder] = []
-        for a in alledateien:
-            a = a.strip()
-            leerzeichen = regex.findall("^\s*$", a)
-            if any(leerzeichen):
-                continue
-            folderda = regex.findall("^Directory.*", a)
-            folderda = self.flattenlist_neu(folderda)
-            if any(folderda):
-                aktuellesfolder = folderda[0]
-                if not folderda[0] in msdosfileliste.keys():
-                    msdosfileliste[folderda[0]] = []
-            fileda = regex.findall("^\d\d\.\d\d.\d\d\d\d.*", a)
-            fileda = self.flattenlist_neu(fileda)
-            if any(fileda):
-                try:
-                    msdosfileliste[aktuellesfolder].append(fileda[0])
-                except:
-                    msdosfileliste[aktuellesfolder] = []
-                    msdosfileliste[aktuellesfolder].append(fileda[0])
-        alleergebnismsdossuche = []
-        for key in msdosfileliste.keys():
-            infos = msdosfileliste[key]
-            for liste in infos:
-                dateiengefunden = regex.findall(
-                    r"(^[\d\.]+)\s+([\d:]+)(.{19})(.*)", str(liste)
-                )
-                dateiengefunden = self.flattenlist_neu(dateiengefunden)
-                if any(dateiengefunden):
-                    try:
-                        zwischenergebnis = [
-                            key,
-                            dateiengefunden[0][0],
-                            dateiengefunden[0][1],
-                            dateiengefunden[0][2],
-                            dateiengefunden[0][3],
-                        ]
-                        alleergebnismsdossuche.append(zwischenergebnis.copy())
-                    except Exception as Fehler:
-                        print(Fehler)
-        mdf = pd.DataFrame.from_records(
-            alleergebnismsdossuche,
-            columns=["folder", "aenderungsdatum", "uhrzeit", "groesse", "dateiname"],
-        )
-        mdf.folder = mdf.folder.str.replace(r"^\s*Directory\s*of\s*", "", regex=True)
-        mdf.groesse = mdf.groesse.str.strip()
-        mdf["datei"] = mdf[mdf.groesse.str.isnumeric()].groesse.apply(
-            lambda x: int(regex.sub("\.", "", x))
-        )
-        mdf["dateiname"] = mdf.dateiname.str.strip()
-
-        mdf["besitzer"] = mdf.dateiname.str.extract(r"^\s*(.[^\\]+)[\\].*")
-        mdf["besitzer"] = mdf.besitzer.str.strip("\\")
-        mdf.dateiname = mdf.dateiname.str.replace(r"^\s*(.[^\\]+)[\\]", "", regex=True)
-        mdf.dateiname = mdf.dateiname.str.replace("Administra", "", regex=False)
-        mdf.columns = [
-            "f_folder",
-            "f_date",
-            "f_time",
-            "f_size",
-            "f_filename",
-            "f_file",
-            "f_owner",
-        ]
-        mdf["f_filepath"] = mdf.f_folder + "\\" + mdf.f_filename
-        mdf.drop_duplicates(subset=["f_filepath"], inplace=True)
-        mdf = mdf.loc[
-            ~mdf.f_filename.str.contains("^\.*$", regex=True, na=False)
-        ].copy()
-        mdf.reset_index(inplace=True, drop=True)
-        mdf.to_pickle(speicherpfad)
-        self.ergebnisdict[aktuellezeit] = speicherpfad
-        # return mdf.copy(),aktuellezeit
-
-    def sortsize(self):
-        self.df.sort_values(by=["f_size"], inplace=True, ascending=False)
-
-    def p(self, liste):
-        for indi, li in enumerate(liste):
-            if indi % 2 == 0:
-                print(drucker.f.black.brightwhite.normal(f"{indi}\t{li}"))
-                continue
-            print(drucker.f.brightwhite.black.normal(f"{indi}\t{li}"))
-            continue
-
-    forbiddenfilepath = ["\\", "/", ":", "?", "*", "<", '"', ">", "|"]
-
-    def create_flatcopy_link(self, separator, saveto):
-        def _create_flatcopy_link(seperator, folder, saveto):
-            if seperator in forbiddenfilepath:
-                seperator = ";"
-            folder = folder.replace("\\", seperator)
-            folder = folder[3:]
-            saveto = saveto.strip("\\ ")
-            return saveto + "\\" + folder
-
-        self.df["flatcopy"] = self.df.f_filepath.apply(
-            lambda x: _create_flatcopy_link(
-                seperator=separator, folder=x, saveto=saveto
+    if add_ripgrep:
+        df["ff_ripgrep"] = df.aa_fullpath.apply(
+            lambda x: FlexiblePartialOwnName(
+                rip_grep_search,
+                f"regular_expression:str, other_parameters:str='', exit_keys:str='ctrl+x', print_output:bool=True, timeout:Union[None,int]=None",
+                True,
+                rip_grep_path,
+                x,
             )
         )
 
-    def create_simlink_in_folder(self, filtered_df=None, printresult=True):
-        if filtered_df is None:
-            filtered_df = self.df
-
-        def create_symlink(dateipfad, symlink):
-            'use like this: create_symlink(r"c:\folder oder file with\shi--y name", "nicename", withending=False)'
-            try:
-                if os.path.islink(symlink) is True:
-                    os.remove(symlink)
-            except:
-                pass
-            try:
-                os.symlink(dateipfad, symlink)
-            except:
-                return False
-            return True
-
-        for link, symlink in zip(
-            filtered_df.f_filepath.to_list(), filtered_df.flatcopy.to_list()
-        ):
-            funktioniert = create_symlink(dateipfad=link, symlink=symlink)
-            if printresult is True:
-                if funktioniert is True:
-                    print(drucker.f.black.brightgreen.italic(f"{link} -> {symlink} OK"))
-                elif funktioniert is False:
-                    print(
-                        drucker.f.black.brightred.italic(f"{link} -> {symlink} ERROR")
-                    )
-
-    def delete_files(self, filtered_df=None, printresult=True, ask_before=True):
-        if filtered_df is None:
-            filtered_df = self.df
-        for file in filtered_df.f_filepath.to_list():
-            deleting = True
-            if ask_before is True:
-                inputuser = input(
-                    drucker.f.black.brightwhite.bold(
-                        f" Do you want to delete: {file} ??? 1 = YES / ANY OTHER KEY = NO"
-                    )
-                )
-                if inputuser != "1":
-                    deleting = False
-            if deleting is True:
-                try:
-                    os.remove(file)
-                    if printresult:
-                        print(drucker.f.black.brightgreen.italic(f"{file} REMOVED"))
-                    continue
-
-                except:
-                    if printresult:
-                        print(drucker.f.black.brightred.italic(f"{file} ERROR"))
-            print(drucker.f.black.brightred.italic(f"{file} NOT REMOVED"))
-
-    def search_with_regex_in_files(
-        self,
-        regular_expression,
-        df=None,
-        ignorecase=False,
-        dotall=False,
-        printresult=True,
-        use_bs4=True,
-    ):
-        regexsearch = regex.compile(regular_expression)
-        try:
-            if df.empty is False:
-                filtered_df = df.copy()
-        except:
-            pass
-        try:
-            if df is None:
-                filtered_df = self.df.copy()
-        except:
-            pass
-
-        if ignorecase is True and dotall is True:
-            regexsearch = regex.compile(
-                regular_expression, regex.DOTALL | regex.IGNORECASE
-            )
-        if ignorecase is True and dotall is False:
-            regexsearch = regex.compile(regular_expression, regex.IGNORECASE)
-        if ignorecase is False and dotall is True:
-            regexsearch = regex.compile(regular_expression, regex.DOTALL)
-
-        def _search_with_regex_in_files(file):
-            fileconent = self.readfile(
-                file, minlength=1, deleteemptylines=False, use_bs4=use_bs4
-            )
-            print(fileconent)
-            ergebnis = regexsearch.findall(str(fileconent))
-            if any(ergebnis):
-                if printresult:
-                    for ergi in ergebnis:
-                        print(
-                            drucker.f.black.brightyellow.underline(
-                                f"     Results in {file}:      "
-                            )
-                        )
-                        print(drucker.f.black.brightgreen.italic(ergi))
-                return ergebnis
-            return np.nan
-
-        filtered_df["content"] = np.nan
-        filtered_df["content"] = filtered_df["content"].astype("object")
-        filtered_df["content"] = filtered_df.f_filepath.apply(
-            _search_with_regex_in_files
+    if add_open_file:
+        df["ff_open"] = df.aa_fullpath.apply(
+            lambda x: FlexiblePartialOwnName(os.startfile, f"", True, x,)
         )
-        return filtered_df.copy()
+    if add_move_file:
+        df["ff_move_file"] = df.aa_fullpath.apply(
+            lambda x: FlexiblePartialOwnName(
+                move_file, f"dest_folder:str, copystat:bool=True", True, x,
+            )
+        )
+    if add_flatcopy:
+        df["ff_flatcopy"] = df.aa_fullpath.apply(
+            lambda x: FlexiblePartialOwnName(
+                flatcopy,
+                f"dest_folder:str, foldersep:str='ǀ', symlink:bool=False, copystat:bool=True",
+                True,
+                x,
+            )
+        )
+    return df
 
 
-# search_folder = DirDF(
-#     path_to_search=r"F:\zzzzzzzzzzzzzzzzzzzzzzzzzz1", save_df_to=r"F:\saveto"
-# )
-# search_folder.create_flatcopy_link(separator="Ç", saveto=r"F:\symlinks")
-# search_folder.create_simlink_in_folder(filtered_df=search_folder.df, printresult=True)
-# search_folder.create_flatcopy_link(separator="#", saveto=r"F:\symlinks")
-# search_folder.flatcopyfiles(filtered_df=search_folder.df, printresult=True)
-# all_txt_files = search_folder.df.loc[search_folder.df.f_filepath.str.contains("\.txt$")].copy()
-# searchresultsdf = search_folder.search_with_regex_in_files(
-#     regular_expression=r"[^\n]+Bilderraten[^\n]+",
-#     df=all_txt_files,
-#     ignorecase=False,
-#     dotall=False,
-#     printresult=True,
-#     use_bs4=True,
-# )
-# search_folder.printdf(start=1, how_many_lines=1000)
-# search_folder.delete_files(filtered_df=all_txt_files, printresult=True, ask_before=True)
+def get_df_from_folder_with_functions(
+    folder,
+    ls_path="ls",
+    last_access_time=True,
+    exit_keys="ctrl+x",
+    timeout=None,
+    strings_path="strings",
+    fzf_path="fzf",
+    rip_grep_path="rg.exe",
+    add_flatcopy_sorted=True,
+    add_flatcopy=True,
+    add_extract_strings=True,
+    add_fuzzy_extract=True,
+    add_ripgrep=True,
+    add_open_file=True,
+    add_move_file=True,
+):
+
+    df = get_dataframe_from_folder(
+        folder,
+        ls_path=ls_path,
+        last_access_time=last_access_time,
+        exit_keys=exit_keys,
+        timeout=timeout,
+    )
+    df = add_functions(
+        df,
+        strings_path=strings_path,
+        fzf_path=fzf_path,
+        rip_grep_path=rip_grep_path,
+        add_flatcopy_sorted=add_flatcopy_sorted,
+        add_flatcopy=add_flatcopy,
+        add_extract_strings=add_extract_strings,
+        add_fuzzy_extract=add_fuzzy_extract,
+        add_ripgrep=add_ripgrep,
+        add_open_file=add_open_file,
+        add_move_file=add_move_file,
+    )
+    return df
+
+
+def pd_add_dfdir():
+    pd.Q_folder_to_df = get_dataframe_from_folder
+    pd.Q_folder_to_df_with_functions = get_df_from_folder_with_functions
