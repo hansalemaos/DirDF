@@ -11,7 +11,7 @@ import os
 import pandas as pd
 from LatinFixer import wrong_chars
 
-from fastfilecopy import copyfile, movefile
+from FastCopyFast import copyfile, movefile
 from touchtouch import touch
 
 forbiddenfilepath = [":", "?", "*", "<", '"', ">", "|"]
